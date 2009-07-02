@@ -329,10 +329,13 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
   (kill-all-local-variables)
   (set-syntax-table chuck-mode-syntax-table)
   (use-local-map chuck-mode-map)
+
+  (set (make-local-variable 'comment-start) "//")
   (set (make-local-variable 'font-lock-defaults)
        '(chuck-font-lock-keywords))
   (set (make-local-variable 'indent-line-function)
        'chuck-indent-line)
+  
   (setq major-mode 'chuck-mode)
   (setq mode-name "ChucK")
   (setq default-tab-width 4)
