@@ -78,36 +78,43 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
 			 " " cmd  " "
 			 (or arg ""))))
 
+;; **************************************************
+;; Chuck inferior process handling
+;; **************************************************
+
+(defvar chuck-save-error
+  "You need to save the buffer before sending it.")
+
 (defun run-chuck ()
-  "Start a ChucK listener"
+  "Start the ChucK VM as an inferior process"
   (interactive)
   (start-process "ChucK" "*ChucK*" chuck-exec "--loop"))
 
 (defun kill-chuck ()
-  "Kills a running ChucK listener"
+  "Kills the ChucK VM"
   (interactive)
   (chuck-cmd "--kill"))
 
-(defun chuck-add-code () 
-  "Add buffer to running ChucK"
+(defun chuck-add-code ()
+  "Add a buffer as a shred to the ChucK VM"
   (interactive)
   (if (buffer-modified-p)
-      (error "You need to save first")
+      (error chuck-save-error)
     (when (not (get-process "ChucK"))
       (run-chuck))
     (let ((chuck-file (file-name-nondirectory buffer-file-name)))
       (chuck-cmd "+" chuck-file))))
 
 (defun chuck-remove-code (shred)
-  "Remove code snippet from running ChucK"
+  "Remove a shred from ChucK"
   (interactive "nRemove which shred? ")
   (chuck-cmd "-" (number-to-string shred)))
 
 (defun chuck-replace-code (shred)
-  "Replace code snippet in running ChucK with buffer"
+  "Replace a shred with the code on a buffer"
   (interactive
    (if (buffer-modified-p)
-       (error "You need to save first")
+       (error chuck-save-error)
      (list (read-number "Wich shred? "))))
   
   (let ((chuck-file (file-name-nondirectory buffer-file-name))
@@ -119,9 +126,44 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
   (interactive)
   (chuck-cmd "--status"))
 
+;; **************************************************
+;; Chuck editing enhancements
+;; **************************************************
+
+(defun chuck-equal-key (arg)
+  "Smart behaviour for = key. Inserts a chuck operator if pressed
+once and an == if pressed twice. With the C-u prefix inserts the
+upchuck operator."
+  (interactive "P")
+  (cond ((chuck-op-before?)
+		 (progn (backward-delete-char 1)
+				(insert "=")))
+		((and arg (listp arg)) (insert "=^"))
+		(t (insert "=>"))))
+
+;; This function try to make chuck operators being deleted with just
+;; one keystroke on DEL (backspace), but it's too troublesome and it
+;; doesn't seem worth it.
+
+;; (defun chuck-delete-backward-char (arg &optional killp)
+;;   "Delete the entire chuck operator with backspace."
+;;   (interactive "P")
+;;   (if (chuck-op-before?)
+;; 	  (delete-backward-char 2)
+;; 	(delete-backward-char (prefix-numeric-value arg) killp)))
+
+(defun chuck-op-before? ()
+  (string= (buffer-substring (- (point) 2) (point)) "=>"))
+
+;; **************************************************
+;; Mode configurations
+;; **************************************************
+
 ;; keymap for ChucK mode
 (defvar chuck-mode-map
   (let ((chuck-mode-map (make-keymap)))
+	;; (define-key chuck-mode-map (kbd "<DEL>") 'chuck-delete-backward-char)
+	(define-key chuck-mode-map (kbd "=") 'chuck-equal-key)
     (define-key chuck-mode-map (kbd "<RET>") 'newline-and-indent)
 
 	(define-key chuck-mode-map [menu-bar chuck chuck-status]    
@@ -151,7 +193,6 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
     
     chuck-mode-map)
   "Keymap for ChucK major mode")
-
 
 ;; Filename binding
 (add-to-list 'auto-mode-alist '("\\.ck\\'" . chuck-mode))
@@ -239,6 +280,10 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
 			"&=>" "|=>" "^=>" ">>=>"
 			"<<=>" "%=>" "<<<" ">>>")
 	 'font-lock-operator-face)
+   
+   ;;  Upchuck operator. For some reason the regexp applied to other
+   ;;  operators don't work
+   (cons "\\_<\\(=\\^\\)" 'font-lock-operator-face)
 
    ;; Standard Library functions
    (list (chuck-library-regexp "Std"
@@ -290,28 +335,28 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
       (indent-line-to 0)
     (let ((not-indented t) cur-indent)
       (if (looking-at ".*}") ; Closing a block
-	  (progn
-	    (save-excursion
-	      (forward-line -1)
-	      (setq cur-indent (- (current-indentation) default-tab-width)))
-	    (if (< cur-indent 0)
-		(setq cur-indent 0)))
-	(save-excursion
-	  (while not-indented
-	    (forward-line -1)
-	    (if (looking-at ".*}") ; Earlier block closed
-		(progn
-		  (setq cur-indent (current-indentation))
-		  (setq not-indented nil))
-	      (if (looking-at ".*{") ; In open block
 		  (progn
-		    (setq cur-indent (+ (current-indentation) default-tab-width))
-		    (setq not-indented nil))
-		(if (bobp)
-		    (setq not-indented nil)))))))
+			(save-excursion
+			  (forward-line -1)
+			  (setq cur-indent (- (current-indentation) default-tab-width)))
+			(if (< cur-indent 0)
+				(setq cur-indent 0)))
+		(save-excursion
+		  (while not-indented
+			(forward-line -1)
+			(if (looking-at ".*}") ; Earlier block closed
+				(progn
+				  (setq cur-indent (current-indentation))
+				  (setq not-indented nil))
+			  (if (looking-at ".*{") ; In open block
+				  (progn
+					(setq cur-indent (+ (current-indentation) default-tab-width))
+					(setq not-indented nil))
+				(if (bobp)
+					(setq not-indented nil)))))))
       (if cur-indent
-	  (indent-line-to cur-indent)
-	(indent-line-to 0)))))
+		  (indent-line-to cur-indent)
+		(indent-line-to 0)))))
 
 ;; Syntax table
 (defvar chuck-mode-syntax-table nil "Syntax table for ChucK mode")
@@ -329,7 +374,6 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
   (kill-all-local-variables)
   (set-syntax-table chuck-mode-syntax-table)
   (use-local-map chuck-mode-map)
-
   (set (make-local-variable 'comment-start) "//")
   (set (make-local-variable 'font-lock-defaults)
        '(chuck-font-lock-keywords))
