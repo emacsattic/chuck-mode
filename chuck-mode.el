@@ -68,6 +68,10 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
   :type 'string
   :group 'chuck)
 
+(defcustom chuck-auto-save-buffer t
+  "If a buffer should be saved before sent to the ChucK VM."
+  :type 'boolean
+  :group 'chuck)
 
 ;; mode hook for user defined actions
 (defvar chuck-mode-hook nil)
@@ -95,11 +99,16 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
   (interactive)
   (chuck-cmd "--kill"))
 
-(defun chuck-add-code ()
-  "Add a buffer as a shred to the ChucK VM"
-  (interactive)
-  (if (buffer-modified-p)
+(defun chuck-read-buffer ()
+  (if (and (buffer-modified-p) (not chuck-auto-save-buffer))
       (error chuck-save-error)
+    (progn (save-buffer)
+		   (current-buffer))))
+		   
+(defun chuck-add-code (buffer)
+  "Add a buffer as a shred to the ChucK VM"
+  (interactive (list (chuck-read-buffer)))
+  (with-current-buffer buffer
     (when (not (get-process "ChucK"))
       (run-chuck))
     (let ((chuck-file (file-name-nondirectory buffer-file-name)))
@@ -107,19 +116,17 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
 
 (defun chuck-remove-code (shred)
   "Remove a shred from ChucK"
-  (interactive "nRemove which shred? ")
+  (interactive "nWhich shred? ")
   (chuck-cmd "-" (number-to-string shred)))
 
-(defun chuck-replace-code (shred)
+(defun chuck-replace-code (buffer shred)
   "Replace a shred with the code on a buffer"
-  (interactive
-   (if (buffer-modified-p)
-       (error chuck-save-error)
-     (list (read-number "Wich shred? "))))
-  
-  (let ((chuck-file (file-name-nondirectory buffer-file-name))
-	(str-shred (number-to-string shred)))
-    (chuck-cmd "=" (concat str-shred " " chuck-file))))
+  (interactive (list (chuck-read-buffer)
+		     (read-number "Wich shred? ")))
+  (with-current-buffer buffer
+    (let ((chuck-file (file-name-nondirectory buffer-file-name))
+	  (str-shred (number-to-string shred)))
+      (chuck-cmd "=" (concat str-shred " " chuck-file)))))
 
 (defun chuck-status ()
   "Tell ChucK to report status"
