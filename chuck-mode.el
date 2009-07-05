@@ -102,9 +102,12 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
 (defun chuck-read-buffer ()
   (if (and (buffer-modified-p) (not chuck-auto-save-buffer))
       (error chuck-save-error)
-    (progn (save-buffer)
-		   (current-buffer))))
-		   
+	(let ((buffer (read-buffer "Buffer to send: "
+							   (buffer-name (current-buffer)))))
+	  (with-current-buffer buffer
+		(save-buffer)
+		(current-buffer)))))
+
 (defun chuck-add-code (buffer)
   "Add a buffer as a shred to the ChucK VM"
   (interactive (list (chuck-read-buffer)))
@@ -377,7 +380,7 @@ upchuck operator."
 ;; Entry point
 (defun chuck-mode ()
   "Major mode for editing ChucK music/audio scripts"
-  (interactive)
+      (interactive)
   (kill-all-local-variables)
   (set-syntax-table chuck-mode-syntax-table)
   (use-local-map chuck-mode-map)
