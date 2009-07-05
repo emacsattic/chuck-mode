@@ -140,7 +140,7 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
 ;; Chuck editing enhancements
 ;; **************************************************
 
-(defun chuck-equal-key (arg)
+(defun chuck-electric-equal-key (arg)
   "Smart behaviour for = key. Inserts a chuck operator if pressed
 once and an == if pressed twice. With the C-u prefix inserts the
 upchuck operator."
@@ -150,6 +150,13 @@ upchuck operator."
 				(insert "=")))
 		((and arg (listp arg)) (insert "=^"))
 		(t (insert "=>"))))
+
+(defun chuck-electric-close-block (n)
+  "Automatically indent after typing a }"
+   (interactive "p")
+   (self-insert-command n)
+   (indent-according-to-mode)
+   (forward-char))
 
 ;; This function try to make chuck operators being deleted with just
 ;; one keystroke on DEL (backspace), but it's too troublesome and it
@@ -173,7 +180,8 @@ upchuck operator."
 (defvar chuck-mode-map
   (let ((chuck-mode-map (make-keymap)))
 	;; (define-key chuck-mode-map (kbd "<DEL>") 'chuck-delete-backward-char)
-	(define-key chuck-mode-map (kbd "=") 'chuck-equal-key)
+	(define-key chuck-mode-map (kbd "}") 'chuck-electric-close-block)
+	(define-key chuck-mode-map (kbd "=") 'chuck-electric-equal-key)
     (define-key chuck-mode-map (kbd "<RET>") 'newline-and-indent)
 
 	(define-key chuck-mode-map [menu-bar chuck chuck-status]    
@@ -343,8 +351,9 @@ upchuck operator."
   (beginning-of-line)
   (if (bobp)  ;; Start of buffer starts out unindented
       (indent-line-to 0)
-    (let ((not-indented t) cur-indent)
-      (if (looking-at ".*}") ; Closing a block
+    (let ((not-indented t)
+		  cur-indent)
+      (if (looking-at "[[:blank:]]*}") ; Closing a block
 		  (progn
 			(save-excursion
 			  (forward-line -1)
@@ -354,16 +363,17 @@ upchuck operator."
 		(save-excursion
 		  (while not-indented
 			(forward-line -1)
-			(if (looking-at ".*{") ; In open block
-				(progn
-				  (setq cur-indent (+ (current-indentation) default-tab-width))
-				  (setq not-indented nil))
-			  (if (looking-at ".*}") ; Earlier block closed
-				  (progn
-					(setq cur-indent (current-indentation))
-					(setq not-indented nil))
-				(if (bobp)
-					(setq not-indented nil)))))))
+			(cond ((looking-at ".*{") ; In open block
+				   (setq cur-indent (+ (current-indentation) default-tab-width))
+				   (setq not-indented nil))
+				  ((looking-at "[[:blank:]]*}") ; Closed block on blank line
+				   (setq cur-indent (current-indentation))
+				   (setq not-indented nil))
+				  ((looking-at ".*}") ; Closed block on non-blank line
+				   (setq cur-indent (- (current-indentation) default-tab-width))
+				   (setq not-indented nil))
+				  ((bobp)
+				   (setq not-indented nil))))))
       (if cur-indent
 		  (indent-line-to cur-indent)
 		(indent-line-to 0)))))
