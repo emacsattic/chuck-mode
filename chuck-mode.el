@@ -354,13 +354,13 @@ upchuck operator."
 		(save-excursion
 		  (while not-indented
 			(forward-line -1)
-			(if (looking-at ".*}") ; Earlier block closed
+			(if (looking-at ".*{") ; In open block
 				(progn
-				  (setq cur-indent (current-indentation))
+				  (setq cur-indent (+ (current-indentation) default-tab-width))
 				  (setq not-indented nil))
-			  (if (looking-at ".*{") ; In open block
+			  (if (looking-at ".*}") ; Earlier block closed
 				  (progn
-					(setq cur-indent (+ (current-indentation) default-tab-width))
+					(setq cur-indent (current-indentation))
 					(setq not-indented nil))
 				(if (bobp)
 					(setq not-indented nil)))))))
