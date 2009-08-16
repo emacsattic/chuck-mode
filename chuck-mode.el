@@ -145,11 +145,13 @@ to the full path of `chuck' (i.e `c:\\chuck\\bin\\chuck.exe')"
 once and an == if pressed twice. With the C-u prefix inserts the
 upchuck operator."
   (interactive "P")
-  (cond ((chuck-op-before?)
-		 (progn (backward-delete-char 1)
-				(insert "=")))
-		((and arg (listp arg)) (insert "=^"))
-		(t (insert "=>"))))
+  (cond ((memq (char-before) '(?> ?< ?!))
+         (insert "="))
+        ((chuck-op-before?)
+         (progn (backward-delete-char 1)
+                (insert "=")))
+        ((and arg (listp arg)) (insert "=^"))
+        (t (insert "=>"))))
 
 (defun chuck-electric-close-block (n)
   "Automatically indent after typing a }"
