@@ -1,10 +1,9 @@
-;;; -*- coding: utf-8 -*-
-;;;chuck-mode.el --- ChucK major mode
+;;; chuck-mode.el --- ChucK major mode -*- coding: utf-8 -*-
 
 ;; Copyright (C) 2004 Mikael Johansson
 
-;; Author:  2009 Kao Cardoso Félix
-;;          2004 Mikael Johansson
+;; Authors: Kao Cardoso Félix
+;;	Mikael Johansson
 ;; Maintainer: kcfelix@gmail.com
 ;; Keywords: tools, processes, languages
 
